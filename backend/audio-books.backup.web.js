@@ -26,7 +26,7 @@ export const fetchAll = webMethod(
   }
 );
 
-export async function uniqueGenresAndSubGenres(items) {
+export async function buildIndexAndFacets(items) {
   const allGenres = [];
   const allSubGenres = [];
   const books = {};

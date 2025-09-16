@@ -60,7 +60,7 @@ async function getDownloadUrlFast(uri) {
   return mediaManager.getDownloadUrl(uri);
 }
 
-export async function uniqueGenresAndSubGenres(
+export async function buildIndexAndFacets(
   items,
   {
     idKey = "_id",
