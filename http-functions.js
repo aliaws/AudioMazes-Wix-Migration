@@ -158,6 +158,56 @@ export async function get_all_achievements(request) {
     }
 }
 
+export async function get_ads_submissions(request) {
+    const response = { headers: { "Content-Type": "application/json" } };
+    if(!await verify_api_key(request, response)) {
+        return forbidden(response);
+    }
+
+    try {
+        const items = await fetchAll("Import1");
+        const { contents: ads } = await buildIndexAndFacets(items, {
+            idKey: "_id",
+            uniques: {},
+            media: { uploadImage: "uploadImageUrl" },
+        });
+        response.body = { ads };
+
+        return ok(response);
+
+    } catch (err) {
+        response.body = {
+            "error": err
+        }
+        return badRequest(response);
+    }
+}
+
+export async function get_sponsors(request) {
+    const response = { headers: { "Content-Type": "application/json" } };
+    if(!await verify_api_key(request, response)) {
+        return forbidden(response);
+    }
+
+    try {
+        const items = await fetchAll("sponsorships");
+        const { contents: sponsors } = await buildIndexAndFacets(items, {
+            idKey: "_id",
+            uniques: {},
+            media: { image_fld: "imageUrl", adSpaceAudio:  "adSpaceAudioUrl" },
+        });
+        response.body = { sponsors };
+
+        return ok(response);
+
+    } catch (err) {
+        response.body = {
+            "error": err
+        }
+        return badRequest(response);
+    }
+}
+
 
 async function verify_api_key(request, response) {
     const apiKey = request.headers["x-api-key"];
