@@ -23,9 +23,14 @@ const GENERS_MAP = {
   "Space Opera": "Sci-Fi"
 }
 
-async function fetchAllInternal(collectionId, build) {
+async function fetchAllInternal(collectionId, build, includes = []) {
   const PAGE_SIZE = 1000;
   let q = wixData.query(collectionId);
+  
+  includes.forEach(field => {
+    q = q.include(field);   // reassign q each time
+  });
+  
   if (typeof build === "function") q = build(q);
 
   let res = await q.limit(PAGE_SIZE).find();
@@ -38,13 +43,56 @@ async function fetchAllInternal(collectionId, build) {
   return items;
 }
 
+
+
+
 export const fetchAll = webMethod(
   Permissions.Anyone,
-  async (collectionId, build) => {
-    return await fetchAllInternal(collectionId, build);
+  async (collectionId, includes = [], build) => {
+    return await fetchAllInternal(collectionId, build, includes);
   }
 );
 
+
+export const getBookSponsorMap = webMethod(Permissions.Anyone, async () => {
+  const PAGE_SIZE = 1000;
+
+  // Query the OWNER side of the relation (sponsorships)
+  let q = wixData.query('sponsorships')
+    .isNotEmpty('PremiumAudiobooks_sponsorshipsReferences')   // <-- field key on sponsorships
+    .include("PremiumAudiobooks_sponsorshipsReferences")
+    .limit(PAGE_SIZE);
+
+  let res = await q.find();
+
+  // Result: { [bookId]: [sponsorId, ...] }
+  const map = {};
+
+  const add = (items) => {
+    for (const s of items) {
+      // multi-ref returns IDs (strings). If you ever .include(), handle objects too:
+      const bookIds = (s.PremiumAudiobooks_sponsorshipsReferences || [])
+        .map(x => (typeof x === 'string' ? x : x?._id))
+        .filter(Boolean);
+
+      for (const bookId of bookIds) {
+        if (!map[bookId]) map[bookId] = [];
+        map[bookId].push(s._id);
+      }
+    }
+  };
+
+  add(res.items);
+  while (res.hasNext()) {
+    res = await res.next();
+    add(res.items);
+  }
+
+  // dedupe sponsor IDs per book
+  for (const k in map) map[k] = [...new Set(map[k])];
+
+  return map;
+});
 
 const isWixUri = (u) => typeof u === "string" && /^wix:/.test(u);
 const pickMediaUrl = (val) => {
@@ -85,6 +133,7 @@ export async function buildIndexAndFacets(
   items,
   {
     idKey = "_id",
+    includes = [],
     media = { productImages: "productImagesUrl", sampleAudio: "sampleAudioUrl", video: "videoUrl" },
     uniques = { genre: "parents", subGenre: "children", discretion: "discretions", glimmers: "glimmers" },
     concurrency = 10,

@@ -73,7 +73,7 @@ export async function get_audiobooks(request) {
     }
 
     try {
-        const items = await fetchAll("PremiumAudiobooks");
+        const items = await fetchAll("PremiumAudiobooks", ["sponsorships"]);
         const {contents: books, genres, map }  = await buildIndexAndFacets(items);
         response.body = { books, genres, map };
 
@@ -190,10 +190,11 @@ export async function get_sponsors(request) {
     }
 
     try {
-        const items = await fetchAll("sponsorships");
+        const items = await fetchAll("sponsorships", ["PremiumAudiobooks_sponsorshipsReferences"]);
         const { contents: sponsors } = await buildIndexAndFacets(items, {
             idKey: "_id",
             uniques: {},
+            includes: ["PremiumAudiobooks_sponsorshipsReferences"],
             media: { image_fld: "imageUrl", adSpaceAudio:  "adSpaceAudioUrl" },
         });
         response.body = { sponsors };
